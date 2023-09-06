@@ -18,14 +18,14 @@ use rand::prelude::*;
 /// we will have at maximum 2n + 1 layers, and at minimum n layers.
 #[derive(Debug, Eq, PartialEq)]
 pub struct GraphLayout {
-    growing_layers: usize,
-    shrinking_layers: usize,
-    num_nodes: usize,
-    edges_per_node: usize,
+    growing_layers: u32,
+    shrinking_layers: u32,
+    num_nodes: u32,
+    edges_per_node: u32,
 }
 
 impl GraphLayout {
-    fn new(growing_nodes: usize, shrinking_nodes: usize, num_nodes: usize, edges_per_node: usize) -> Self {
+    fn new(growing_nodes: u32, shrinking_nodes: u32, num_nodes: u32, edges_per_node: u32) -> Self {
         return GraphLayout { growing_layers: growing_nodes, shrinking_layers: shrinking_nodes, num_nodes, edges_per_node }
     }
 
@@ -35,20 +35,20 @@ impl GraphLayout {
     }
 
     /// Creates a new layout which will have `num_nodes` vertices and `edges_per_node` edges per vertice.
-    pub fn new_from_num_nodes(num_nodes: usize, edges_per_node: usize) -> Self {
-        let calc_num_nodes = |edges_per_node: usize, pow: u32| (edges_per_node.pow(pow) - 1) / (edges_per_node - 1);
+    pub fn new_from_num_nodes(num_nodes: u32, edges_per_node: u32) -> Self {
+        let calc_num_nodes = |edges_per_node: u32, pow: u32| (edges_per_node.pow(pow) - 1) / (edges_per_node - 1);
         for i in 0..{
             let growing_nodes = calc_num_nodes(edges_per_node, i);
             let shrinking_nodes = calc_num_nodes(edges_per_node, i + 1);
             if growing_nodes + shrinking_nodes >= num_nodes {
-                return GraphLayout{ growing_layers: i as usize, shrinking_layers: (i + 1) as usize, num_nodes, edges_per_node };
+                return GraphLayout{ growing_layers: i, shrinking_layers: (i + 1), num_nodes, edges_per_node };
             }
         }
         unreachable!()
     }
 
     /// Build the edges of the graph.
-    pub fn build_edges(&self) -> Vec<(usize, usize)> {
+    pub fn build_edges(&self) -> Vec<(u32, u32)> {
         // start with node = 0
         let mut edges = Vec::new();
         let mut node = 0;
@@ -57,7 +57,7 @@ impl GraphLayout {
             for _ in 0..layer_size {
                 for edge in 1..=self.edges_per_node {
                     edges.push((node, self.edges_per_node * node + edge));
-                    if edges.len() + 1 == self.num_nodes {
+                    if edges.len() as u32 + 1 == self.num_nodes {
                         return edges;
                     }
                 }
@@ -86,21 +86,21 @@ impl GraphLayout {
 
 /// Represents a graph with randomly created edges.
 pub struct RandomLayout {
-    num_edges: usize,
+    num_edges: u32,
 }
 
 impl RandomLayout {
-    pub fn new(num_edges: usize) -> Self {
+    pub fn new(num_edges: u32) -> Self {
         Self { num_edges }
     }
 
     /// Creates edges of a graph randomly.
     /// The graph created from the edges will be acyclic.
-    pub fn build_edges(&self) -> Vec<(usize, usize)> {
+    pub fn build_edges(&self) -> Vec<(u32, u32)> {
         let mut rng = thread_rng();
         let mut edges = vec![(0, 1)];
 
-        while edges.len() < self.num_edges {
+        while edges.len() < self.num_edges as usize {
             let current_edge = edges[rng.gen_range(0..edges.len())];
 
             loop {
@@ -125,7 +125,7 @@ impl RandomLayout {
     }
 
     /// Checks if the edges of the graph contain a cycle.
-    fn contains_cycle(edges: &[(usize, usize)]) -> bool {
+    fn contains_cycle(edges: &[(u32, u32)]) -> bool {
         let mut visited = std::collections::HashSet::new();
         for edge in edges {
             if visited.contains(edge) {
@@ -148,7 +148,7 @@ impl RandomLayout {
 }
 
 /// Write the edges of a graph to a text file.
-pub fn write_to_file(filename: &str, edges: &[(usize, usize)]) -> std::io::Result<()> {
+pub fn write_to_file(filename: &str, edges: &[(u32, u32)]) -> std::io::Result<()> {
     let mut file = File::create(filename)?;
     let buffer = format!("{:?}", edges);
     file.write_all(buffer.as_bytes())?;
