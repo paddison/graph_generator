@@ -1,0 +1,80 @@
+/// Creates a graph with `num_nodes` vertices, which have `edges_per_node` edges.
+/// The layout of the graph is layered, where it grows from one vertice to a certain maximum with
+/// and then starts shrinking again to one vertice at the bottom layer:
+/// ```
+///             /---v---\
+///          /-v-\    /-v-\
+///         v    v   v    v 
+///          \-v-/   \-v-/   
+///            \---v---/
+/// ```
+/// The number of layers depends on the number of vertices.
+/// More specifically, if edges^(n) - 1 + edges^(n - 1) <= num_vertices <= edges^(n+1) - 1 + edges^(n), 
+/// we will have at maximum 2n + 1 layers, and at minimum n layers.
+#[derive(Debug, Eq, PartialEq)]
+pub struct LayeredGraph {
+    growing_layers: u32,
+    shrinking_layers: u32,
+    num_nodes: u32,
+    edges_per_node: u32,
+}
+
+impl LayeredGraph {
+    pub fn new(growing_nodes: u32, shrinking_nodes: u32, num_nodes: u32, edges_per_node: u32) -> Self {
+        return LayeredGraph { growing_layers: growing_nodes, shrinking_layers: shrinking_nodes, num_nodes, edges_per_node }
+    }
+
+    /// Not implemented.
+    fn new_from_num_edges(_num_edges: usize, _edges_per_node: usize) -> Self {
+        unimplemented!()
+    }
+
+    /// Creates a new layout which will have `num_nodes` vertices and `edges_per_node` edges per vertice.
+    pub fn new_from_num_nodes(num_nodes: u32, edges_per_node: u32) -> Self {
+        let calc_num_nodes = |edges_per_node: u32, pow: u32| (edges_per_node.pow(pow) - 1) / (edges_per_node - 1);
+        for i in 0..{
+            let growing_nodes = calc_num_nodes(edges_per_node, i);
+            let shrinking_nodes = calc_num_nodes(edges_per_node, i + 1);
+            if growing_nodes + shrinking_nodes >= num_nodes {
+                return LayeredGraph{ growing_layers: i, shrinking_layers: (i + 1), num_nodes, edges_per_node };
+            }
+        }
+        unreachable!()
+    }
+
+    /// Build the edges of the graph.
+    pub fn build_edges(&self) -> Vec<(u32, u32)> {
+        // start with node = 0
+        let mut edges = Vec::new();
+        let mut node = 0;
+        for layer in 0..self.growing_layers {
+            let layer_size = self.edges_per_node.pow(layer as u32);
+            for _ in 0..layer_size {
+                for edge in 1..=self.edges_per_node {
+                    edges.push((node, self.edges_per_node * node + edge));
+                    if edges.len() as u32 + 1 == self.num_nodes {
+                        return edges;
+                    }
+                }
+                node += 1;
+            }
+        }
+
+        for layer in (1..self.shrinking_layers).rev() {
+            let mut layer_size = self.edges_per_node.pow(layer as u32);
+            for _ in 0..(layer_size / self.edges_per_node) {
+                for edge in 0..self.edges_per_node {
+                    let successor = node + layer_size - edge;
+                    if successor >= self.num_nodes {
+                        return edges;
+                    }
+                    edges.push((node, node + layer_size - edge));
+                    node += 1;
+                }
+                layer_size -= self.edges_per_node - 1;
+            }
+        }
+        edges
+    }
+
+}
