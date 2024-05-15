@@ -4,12 +4,12 @@
 /// ```
 ///             /---v---\
 ///          /-v-\    /-v-\
-///         v    v   v    v 
+///         v    v   v    v
 ///          \-v-/   \-v-/   
 ///            \---v---/
 /// ```
 /// The number of layers depends on the number of vertices.
-/// More specifically, if edges^(n) - 1 + edges^(n - 1) <= num_vertices <= edges^(n+1) - 1 + edges^(n), 
+/// More specifically, if edges^(n) - 1 + edges^(n - 1) <= num_vertices <= edges^(n+1) - 1 + edges^(n),
 /// we will have at maximum 2n + 1 layers, and at minimum n layers.
 #[derive(Debug, Eq, PartialEq)]
 pub struct LayeredGraph {
@@ -20,8 +20,18 @@ pub struct LayeredGraph {
 }
 
 impl LayeredGraph {
-    pub fn new(growing_nodes: u32, shrinking_nodes: u32, num_nodes: u32, edges_per_node: u32) -> Self {
-        return LayeredGraph { growing_layers: growing_nodes, shrinking_layers: shrinking_nodes, num_nodes, edges_per_node }
+    pub fn new(
+        growing_nodes: u32,
+        shrinking_nodes: u32,
+        num_nodes: u32,
+        edges_per_node: u32,
+    ) -> Self {
+        return LayeredGraph {
+            growing_layers: growing_nodes,
+            shrinking_layers: shrinking_nodes,
+            num_nodes,
+            edges_per_node,
+        };
     }
 
     /// Not implemented.
@@ -31,12 +41,18 @@ impl LayeredGraph {
 
     /// Creates a new layout which will have `num_nodes` vertices and `edges_per_node` edges per vertice.
     pub fn new_from_num_nodes(num_nodes: u32, edges_per_node: u32) -> Self {
-        let calc_num_nodes = |edges_per_node: u32, pow: u32| (edges_per_node.pow(pow) - 1) / (edges_per_node - 1);
-        for i in 0..{
+        let calc_num_nodes =
+            |edges_per_node: u32, pow: u32| (edges_per_node.pow(pow) - 1) / (edges_per_node - 1);
+        for i in 0.. {
             let growing_nodes = calc_num_nodes(edges_per_node, i);
             let shrinking_nodes = calc_num_nodes(edges_per_node, i + 1);
             if growing_nodes + shrinking_nodes >= num_nodes {
-                return LayeredGraph{ growing_layers: i, shrinking_layers: (i + 1), num_nodes, edges_per_node };
+                return LayeredGraph {
+                    growing_layers: i,
+                    shrinking_layers: (i + 1),
+                    num_nodes,
+                    edges_per_node,
+                };
             }
         }
         unreachable!()
@@ -76,5 +92,45 @@ impl LayeredGraph {
         }
         edges
     }
+}
 
+
+#[cfg(test)]
+mod tests {
+    use crate::layered::LayeredGraph;
+
+    #[test]
+    fn test_new_from_num_nodes_2_nodes_2_edges() {
+        let expected = LayeredGraph::new(1, 2, 2, 2);
+        let actual = LayeredGraph::new_from_num_nodes(2, 2);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_new_from_num_nodes_8_nodes_2_edges() {
+        let expected = LayeredGraph::new(2, 3, 8, 2);
+        let actual = LayeredGraph::new_from_num_nodes(8, 2);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_new_from_num_nodes_22_nodes_2_edges() {
+        let expected = LayeredGraph::new(3, 4, 22, 2);
+        let actual = LayeredGraph::new_from_num_nodes(22, 2);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_new_from_num_nodes_16_nodes_3_edges() {
+        let expected = LayeredGraph::new(2, 3, 16, 3);
+        let actual = LayeredGraph::new_from_num_nodes(16, 3);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_print_edges() {
+        let layout = LayeredGraph::new_from_num_nodes(766, 2);
+        println!("{:?}", layout);
+        println!("{:?}", layout.build_edges());
+    }
 }

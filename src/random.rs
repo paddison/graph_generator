@@ -19,7 +19,7 @@ impl RandomGraph {
             let current_edge = edges[rng.generate_range(edges.len())];
 
             loop {
-                let next_successor = rng.generate_range(self.num_edges as usize + 1) as u32;  
+                let next_successor = rng.generate_range(self.num_edges as usize + 1) as u32;
                 let next_predecessor = [current_edge.0, current_edge.1][rng.generate_range(2)];
                 if next_successor == next_predecessor {
                     continue;
@@ -33,9 +33,9 @@ impl RandomGraph {
                         break;
                     }
                 }
-            };
+            }
         }
-        
+
         edges
     }
 
@@ -59,5 +59,29 @@ impl RandomGraph {
         }
 
         false
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::RandomGraph;
+
+    #[test]
+    fn test_random_layout() {
+        let layout = RandomGraph::new(5);
+        let edges = layout.build_edges();
+        println!("{:?}", edges);
+    }
+
+    #[test]
+    fn test_contains_cycle() {
+        assert!(RandomGraph::contains_cycle(&[
+            (0, 1),
+            (0, 5),
+            (0, 2),
+            (2, 5),
+            (5, 0)
+        ]));
     }
 }
