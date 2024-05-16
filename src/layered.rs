@@ -94,7 +94,6 @@ impl LayeredGraph {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::layered::LayeredGraph;

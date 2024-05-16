@@ -62,7 +62,6 @@ impl RandomGraph {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::RandomGraph;
