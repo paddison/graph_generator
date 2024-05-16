@@ -64,13 +64,13 @@ fn create_layers(nodes_per_layer: usize, n_layers: usize) -> Vec<Vec<usize>> {
 ///    |
 ///    |
 ///    v
-///     2  5  8     t = 1
-///   1  4  7
-/// 0  3  6  17
-///        16
-/// 9 12 15  26
-///        25
-///18 21 24
+///     29 32 35     t = 1
+///   28 31 34
+/// 27 30 33  44
+///         43
+/// 36 39 42  53
+///         52
+/// 45 48 51
 ///    |
 ///    |
 ///    ...          t = 2
@@ -80,82 +80,123 @@ fn create_layers(nodes_per_layer: usize, n_layers: usize) -> Vec<Vec<usize>> {
 /// Vertices on one of the sides of the cube are called 'outer vertices' (0 - 9 are
 /// outer vertices for example)
 /// outer vertices are connected to an additional 'comm vertex' between each timestep
-pub fn cube_graph(width: usize, height: usize, depth: usize, timesteps: usize) -> Vec<(usize, usize)> {
-    // has to be at least 3 by 3
-    if height < 3 || width < 3 || depth < 3 {
-        return Vec::new();
-    }
+pub struct CubeGraph {
+    width: isize,
+    height: isize,
+    depth: isize,
+    timesteps: isize,
+}
 
-    let number_of_vertices = width * height * depth;
-    let mut edges = Vec::new();
-
-    // vertices are ordered from depth to width to height (/>v)
-    for step in 0..(timesteps - 1) {
-        let comm = step + number_of_vertices * timesteps;
-        for id in 0..(number_of_vertices) {
-            // get neihbor indices
-            let mut neighbor_edges = get_neighbor_indices(id as isize, width as isize, height as isize, depth as isize)
-                .into_iter()
-                .map(|n| (id, n + (step + 1) * number_of_vertices))
-                .collect();
-
-            edges.append(&mut neighbor_edges);
-            // add comm vertice between outer edge
-            if is_outer_vertice(id, width, height, depth) {
-                edges.push((id, comm));
-                edges.push((comm, id + (step + 1) * number_of_vertices));
-            }
+impl CubeGraph {
+    pub fn new(width: usize, height: usize, depth: usize, timesteps: usize) -> Self {
+        Self {
+            width: width as isize,
+            height: height as isize,
+            depth: depth as isize,
+            timesteps: timesteps as isize,
         }
     }
 
-    edges.into_iter().collect::<HashSet<_>>().into_iter().collect()
-}
+    pub fn build(&self) -> Vec<(usize, usize)> {
+        // has to be at least 3 by 3
+        if self.height < 3 || self.width < 3 || self.depth < 3 {
+            return Vec::new();
+        }
 
-fn is_outer_vertice(id: usize, width: usize, height: usize, depth: usize) -> bool {
-    // outer vertices can be determined in the following way:
-    // top:
-    id < depth * width ||
-    // bottom: 
-    id >= depth * width * (height - 1) ||
-    // front:
-    id % depth == 0 ||
-    // back:
-    id % depth == depth - 1 ||
-    // left:
-    id % (depth * width) < depth ||
-    // right:
-    id % (depth * width) > (depth - 1) * width
-}
+        let number_of_vertices = self.size();
+        let mut edges = Vec::new();
 
-fn get_neighbor_indices(id: isize, width: isize, height: isize, depth: isize) -> Vec<usize> {
-    let ops = [0, 1, -1];
-    let z = id / (width * depth);
-    let y = (id / depth) % width;
-    let x = id % depth;
+        // vertices are ordered from depth to width to height (/>v)
+        for step in 0..(self.timesteps - 1) {
+            let comm = step + number_of_vertices * self.timesteps;
+            for id in 0..(number_of_vertices as usize) {
+                // get neihbor indices
+                let mut neighbor_edges = self
+                    .get_neighbor_indices(id as isize)
+                    .into_iter()
+                    .map(|n| (id, n + ((step + 1) * number_of_vertices) as usize))
+                    .collect();
 
-    // nodes always have to be on adjacent points
+                edges.append(&mut neighbor_edges);
+                // add comm vertice between outer edge
+                if self.is_outer_vertex(id as isize) {
+                    edges.push((id, comm as usize));
+                    edges.push((
+                        comm as usize,
+                        id + ((step + 1) * number_of_vertices) as usize,
+                    ));
+                }
+            }
+        }
 
-    (0..3)
-        .flat_map(|i| {
-            (0..3).flat_map(move |j| {
-                (0..3).map(move |k| id + depth * width * ops[i] + 1 * ops[j] + depth * ops[k])
+        edges
+            .into_iter()
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect()
+    }
+
+    fn is_outer_vertex(&self, id: isize) -> bool {
+        // outer vertices can be determined in the following way:
+        // top:
+        id < self.depth * self.width ||
+        // bottom: 
+        id >= self.depth * self.width * (self.height - 1) ||
+        // front:
+        id % self.depth == 0 ||
+        // back:
+        id % self.depth == self.depth - 1 ||
+        // left:
+        id % (self.depth * self.width) < self.depth ||
+        // right:
+        id % (self.depth * self.width) >= (self.depth - 1) * self.width
+    }
+
+    fn get_neighbor_indices(&self, id: isize) -> Vec<usize> {
+        // nodes always have to be on adjacent points
+        (0..3)
+            .flat_map(|i| {
+                (0..3).flat_map(move |j| (0..3).map(move |k| self.calc_neighbor(id, i, j, k)))
             })
-        })
-        .filter(|n| 
-                // top
-                *n >= 0 && 
-                // bottom
-                *n < width * height * depth && 
-                // left && right
-                y.abs_diff((*n / depth) % width) <= 1 && 
-                // front && back
-                x.abs_diff(*n % depth) <= 1)
-        .map(|n| n as usize)
-        .collect()
-}
+            .filter(|n| 
+                    // top
+                    *n >= 0 && 
+                    // bottom
+                    *n < self.width * self.height * self.depth && 
+                    // left && right
+                    self.y(id).abs_diff(self.y(*n)) <= 1 && 
+                    // front && back
+                    self.x(id).abs_diff(self.x(*n)) <= 1)
+            .map(|n| n as usize)
+            .collect()
+    }
 
-fn calc_neighbor(id: isize, width: isize, height: isize, depth: isize) -> isize {
-    1 //id as isize + width as isize * ops[i] + height as isize * ops[j] + depth as isize * ops[k]
+    #[inline(always)]
+    fn size(&self) -> isize {
+        self.width * self.height * self.depth
+    }
+
+    #[inline(always)]
+    fn x(&self, id: isize) -> isize {
+        id % self.depth
+    }
+
+    #[inline(always)]
+    fn y(&self, id: isize) -> isize {
+        id / (self.width * self.depth)
+    }
+
+    #[inline(always)]
+    #[allow(dead_code)]
+    fn z(&self, id: isize) -> isize {
+        (id / self.depth) % self.width
+    }
+
+    #[inline(always)]
+    fn calc_neighbor(&self, id: isize, i: usize, j: usize, k: usize) -> isize {
+        let ops = [0, 1, -1];
+        id + self.depth * self.width * ops[i] + 1 * ops[j] + self.depth * ops[k]
+    }
 }
 
 #[test]
@@ -238,13 +279,14 @@ fn test_create_comp_graph_larg() {
 
 #[test]
 fn test_cube_graph() {
-    let mut edges = cube_graph(8, 8, 8, 4);
+    let mut edges = CubeGraph::new(3, 3, 3, 2).build();
     edges.sort_by(|a, b| a.0.cmp(&b.0));
     println!("{edges:?}\n{}", edges.len());
 }
 
 #[test]
 fn test_neighbor_indices() {
-    let neighbors = get_neighbor_indices(13, 3, 3, 3);
+    let g = CubeGraph::new(3, 3, 3, 3);
+    let neighbors = g.get_neighbor_indices(13);
     println!("{neighbors:?}");
 }
