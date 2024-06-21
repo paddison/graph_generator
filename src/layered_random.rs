@@ -36,6 +36,7 @@ use super::util::Lcg;
 /// Usage:
 ///
 /// ```
+/// use graph_generator::layered_random::*;
 /// // Create a GraphGenerator with 5 layers, a user defined seed of degree 3
 /// let g: LayeredRandomGraph = LayeredRandomGraph::new(5)
 ///     .with_seed(123456u128)
@@ -118,6 +119,7 @@ impl LayeredRandomGraph {
 /// Example Usage:
 ///
 /// ```
+/// use graph_generator::layered_random::*;
 /// // a randomizer can only be created through a LayeredGraphGenerator
 /// let graph_randomizer = LayeredRandomGraph::new().with_degree(2);
 /// // randomize the graph and get the edges.

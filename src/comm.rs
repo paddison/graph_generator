@@ -50,6 +50,133 @@ fn create_layers(nodes_per_layer: usize, n_layers: usize) -> Vec<Vec<usize>> {
         .collect()
 }
 
+type Cube = Vec<Vec<Vec<usize>>>;
+
+struct CubeGraph {
+    cubes: Vec<Cube>,
+    width: usize,
+    height: usize,
+    depth: usize,
+    timesteps: usize,
+}
+
+impl CubeGraph {
+    pub fn new(width: usize, height: usize, depth: usize, timesteps: usize) -> Self {
+        let mut id = 0;
+        let mut cubes = Vec::new();
+        for t in 0..timesteps {
+            let mut cube = vec![vec![vec![0; depth]; height];width];
+            for x in 0..width {
+                for y in 0..height {
+                    for z in 0..depth {
+                        cube[x][y][z] = id;
+                        id += 1;
+                    }
+                }
+            }
+            cubes.push(cube);
+        }
+        Self { cubes, width, height, depth, timesteps }
+    }
+
+    pub fn build(self) -> Vec<(usize, usize)> {
+        let mut edges = Vec::new();
+        let mut comm_id = self.width * self.height * self.depth * self.timesteps;
+
+        for ts in 0..(self.timesteps - 1) {
+            for x in 0..self.width {
+                for y in 0..self.height {
+                    for z in 0..self.depth {
+                        let cur = self.cubes[ts][x][y][z];
+                        self.get_neighbors(x, y, z, ts)
+                            .into_iter()
+                            .map(|n| (cur, n))
+                            .for_each(|e| edges.push(e));
+                        
+                        if self.is_outer_vertex(x, y, z) {
+                            edges.push((cur, comm_id));
+                            edges.push((comm_id, self.cubes[ts + 1][x][y][z]));
+                        }
+                    }
+                }
+            }
+            comm_id += 1;
+        }
+
+        edges
+    }
+
+    fn get_neighbors(&self, x: usize, y: usize, z: usize, ts: usize) -> Vec<usize> {
+        let modifiers = [usize::MAX, 0, 1];
+        let mut neighbors = Vec::new();
+        for i in modifiers.clone() {
+            for j in modifiers.clone() {
+                for k in modifiers.clone() {
+                    if i == 0 && j == 0 && k == 0 {
+                        continue;
+                    }
+                    let n = self.cubes
+                        .get(ts + 1)
+                        .map(|xx| xx.get(x.wrapping_add(i)))
+                        .flatten()
+                        .map(|yy| yy.get(y.wrapping_add(j)))
+                        .flatten()
+                        .map(|zz| zz.get(z.wrapping_add(k)))
+                        .flatten()
+                        .copied();
+
+                    if let Some(n) = n {
+                        neighbors.push(n);
+                    }
+                }
+            }
+        }
+
+        neighbors
+    }
+
+    fn is_outer_vertex(&self, x: usize, y: usize, z: usize) -> bool {
+        x == 0 || x == self.width - 1 || 
+        y == 0 || y == self.height - 1 ||
+        z == 0 || z == self.depth - 1
+    }
+}
+
+#[test]
+fn cube_graph_vec() {
+    let graph = CubeGraph::new(3, 3, 3, 2); 
+    for ts in &graph.cubes {
+        for x in ts {
+            for y in x {
+                println!("{y:?}");
+            }
+            println!("");
+        }
+        println!("");
+    }
+}
+
+#[test]
+fn cube_graph_neighbors() {
+    let graph = CubeGraph::new(3, 3, 3, 2);
+    println!("{:?}", graph.get_neighbors(0, 0, 0, 0));
+    println!("{:?}", graph.get_neighbors(1, 1, 1, 0));
+}
+
+#[test]
+fn cube_graph_is_outer() {
+    let graph = CubeGraph::new(4, 4, 4, 1);
+    assert!(graph.is_outer_vertex(0, 1, 2));
+    assert!(!graph.is_outer_vertex(1, 1, 1));
+}
+
+#[test]
+fn cube_graph_build() {
+    let edges = CubeGraph::new(3, 3, 3, 2).build();
+    println!("{edges:?}");
+
+}
+
 /// Builds a cube graph:
 /// consists of a series of cubes, with a cube being some state at a given timestep
 ///
@@ -80,14 +207,14 @@ fn create_layers(nodes_per_layer: usize, n_layers: usize) -> Vec<Vec<usize>> {
 /// Vertices on one of the sides of the cube are called 'outer vertices' (0 - 9 are
 /// outer vertices for example)
 /// outer vertices are connected to an additional 'comm vertex' between each timestep
-pub struct CubeGraph {
+pub struct CubeGraphOld {
     width: isize,
     height: isize,
     depth: isize,
     timesteps: isize,
 }
 
-impl CubeGraph {
+impl CubeGraphOld {
     pub fn new(width: usize, height: usize, depth: usize, timesteps: usize) -> Self {
         Self {
             width: width as isize,
@@ -277,16 +404,15 @@ fn test_create_comp_graph_larg() {
     println!("{:?}", edges);
 }
 
-#[test]
 fn test_cube_graph() {
-    let mut edges = CubeGraph::new(3, 3, 3, 2).build();
+    let mut edges = CubeGraphOld::new(3, 3, 3, 2).build();
     edges.sort_by(|a, b| a.0.cmp(&b.0));
     println!("{edges:?}\n{}", edges.len());
 }
 
 #[test]
 fn test_neighbor_indices() {
-    let g = CubeGraph::new(3, 3, 3, 3);
+    let g = CubeGraphOld::new(3, 3, 3, 3);
     let neighbors = g.get_neighbor_indices(13);
     println!("{neighbors:?}");
 }
