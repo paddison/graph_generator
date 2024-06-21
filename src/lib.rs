@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::Write;
 
-use comm::CubeGraphOld;
+use comm::CubeGraph;
 
 pub mod comm;
 pub mod layered;
@@ -26,8 +26,18 @@ fn test_write_to_file() {
 }
 
 #[test]
+fn cube_graph_3_dim_2_ts() {
+    let layout = CubeGraph::new(3, 3, 3, 2)
+        .build()
+        .into_iter()
+        .map(|(t, h)| (t as u32, h as u32))
+        .collect::<Vec<_>>();
+    let _ = write_to_file("cube_d3_ts2.txt", &layout);
+}
+
+#[test]
 fn cube_graph_6_dim_3_ts() {
-    let layout = CubeGraphOld::new(6, 6, 6, 3)
+    let layout = CubeGraph::new(6, 6, 6, 3)
         .build()
         .into_iter()
         .map(|(t, h)| (t as u32, h as u32))
@@ -36,8 +46,8 @@ fn cube_graph_6_dim_3_ts() {
 }
 
 #[test]
-fn dim_graph_6_dim_3_ts() {
-    let layout = CubeGraphOld::new(8, 8, 8, 3)
+fn cube_graph_8_dim_3_ts() {
+    let layout = CubeGraph::new(8, 8, 8, 3)
         .build()
         .into_iter()
         .map(|(t, h)| (t as u32, h as u32))
