@@ -52,7 +52,7 @@ fn create_layers(nodes_per_layer: usize, n_layers: usize) -> Vec<Vec<usize>> {
 
 type Cube = Vec<Vec<Vec<usize>>>;
 
-struct CubeGraph {
+pub struct CubeGraph {
     cubes: Vec<Cube>,
     width: usize,
     height: usize,
